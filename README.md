@@ -33,6 +33,10 @@ Environment used for these numbers: `numpy 2.5.1`, `scikit-learn 1.9.0`,
 | **`mlp`** | Small 2-hidden-layer MLP (128→64→64→K) trained end-to-end with Adam. "A network's classifier head". |
 | **`svm`** | RBF kernel SVM (`gamma='scale'`). Reference nonlinear method. |
 | **`knn`** | k=5 nearest neighbor. Instance-based reference. |
+| **`nn-encoder`** | The `mlp` architecture trained with cross-entropy and **frozen**; exposes 64-dim penultimate embeddings. Used only in §5. |
+| **`emb-hdc`** | **HDCnn**: `nn-encoder` embeddings → `sign(emb P)` → class prototypes (HDC as the network's classification head). |
+| **`emb-linear`** | LR head on the same frozen embeddings (the network's classifier head). |
+| **`emb-rf-linear-bin`** | Learned linear head on the *binarized* HD features of those embeddings. |
 
 All models are defined in [`hdc_empirical/models.py`](hdc_empirical/models.py);
 datasets in [`hdc_empirical/data.py`](hdc_empirical/data.py); benchmarks in
@@ -253,6 +257,103 @@ representation and near-linear inspectability.
 
 ---
 
+## 5. HDCnn — frozen feature extractor → HDC classification
+
+The standard "HDCnn" deployment replaces a network's classification head with
+HDC. The backbone is `nn-encoder` (`hdc_empirical/models.py`), identical to the
+`mlp` baseline (128→64→64→K, cross-entropy, seed 0) but exposing its frozen
+64-dim penultimate features. The head is then trained in three ways on those
+same embeddings:
+
+- **`emb-hdc`** — HDCnn: embeddings → `sign(emb P)` (D=10,000) → class prototypes
+- **`emb-linear`** — the network's classifier head (LR) on frozen embeddings
+- **`emb-rf-linear-bin`** — a learned linear head on the *binarized* HD features
+
+`hdc-raw` (raw-feature HDC) and `mlp` (end-to-end) are repeated as references.
+If HDCnn's robustness simply tracks the end-to-end MLP, the encoder is doing the
+work; if it keeps raw-HDC's profile, the HDC head itself is responsible.
+
+### 5a. Accuracy — heads on frozen embeddings (backbone retrained at each size, then frozen)
+
+| method | 10/class | 50/class | 200/class | 1000/class |
+|--------|---------:|---------:|----------:|-----------:|
+| emb-hdc | 0.414 | 0.546 | 0.614 | **0.651** |
+| emb-linear | **0.427** | 0.540 | **0.624** | 0.643 |
+| emb-rf-linear-bin | 0.376 | 0.541 | 0.608 | **0.653** |
+| mlp (end-to-end) | 0.408 | 0.541 | 0.627 | 0.644 |
+| *hdc-raw (from §2)* | *0.477* | *0.627* | *0.692* | *0.721* |
+
+### 5b. Robustness on frozen embeddings
+
+Backbone trained once on clean data then frozen; heads trained on its
+embeddings; stress applied to the **raw inputs** before the backbone.
+
+#### Gaussian input noise
+
+| method | clean | a=1 | a=2 | a=4 | a=8 |
+|--------|------:|----:|----:|----:|----:|
+| **hdc-raw** | **0.770** | **0.642** | **0.514** | **0.387** | **0.305** |
+| emb-hdc | 0.717 | 0.511 | 0.435 | 0.336 | 0.277 |
+| emb-linear | 0.704 | 0.509 | 0.436 | 0.341 | 0.280 |
+| emb-rf-linear-bin | 0.706 | 0.504 | 0.431 | 0.336 | 0.278 |
+| mlp (end-to-end) | 0.707 | 0.511 | 0.432 | 0.346 | 0.286 |
+
+#### Salt-and-pepper
+
+| method | clean | 5% | 10% | 20% | 40% |
+|--------|------:|---:|----:|----:|----:|
+| **hdc-raw** | **0.770** | **0.654** | **0.654** | **0.650** | **0.677** |
+| emb-hdc | 0.717 | 0.567 | 0.555 | 0.541 | 0.570 |
+| emb-linear | 0.704 | 0.554 | 0.551 | 0.548 | 0.562 |
+| emb-rf-linear-bin | 0.706 | 0.565 | 0.552 | 0.535 | 0.571 |
+| mlp (end-to-end) | 0.707 | 0.558 | 0.550 | 0.544 | 0.560 |
+
+#### Domain shift
+
+| method | clean | τ=1 | τ=2 | τ=4 |
+|--------|------:|----:|----:|----:|
+| **hdc-raw** | **0.770** | **0.765** | **0.767** | **0.760** |
+| emb-hdc | 0.717 | 0.709 | 0.710 | 0.691 |
+| emb-linear | 0.704 | 0.705 | 0.703 | 0.685 |
+| emb-rf-linear-bin | 0.706 | 0.707 | 0.704 | 0.682 |
+| mlp (end-to-end) | 0.707 | 0.709 | 0.702 | 0.688 |
+
+#### Label noise (heads trained on noisy labels; backbone stays frozen & clean)
+
+| method | 0% | 20% | 40% | drop@40% |
+|--------|-----:|-----:|-----:|---------:|
+| **emb-hdc** | 0.717 | 0.713 | 0.715 | **-0.002** |
+| emb-linear | 0.704 | 0.672 | 0.665 | -0.039 |
+| emb-rf-linear-bin | 0.706 | 0.610 | 0.552 | -0.154 |
+| mlp (end-to-end) | 0.707 | 0.595 | 0.522 | -0.185 |
+| *hdc-raw* | *0.770* | *0.771* | *0.768* | *-0.002* |
+
+**Takeaway — HDCnn.** The answer to "does the HDC head keep its strengths on top
+of a learned encoder?" is *mixed, and revealing*:
+
+- **Label-noise robustness transfers — yes.** Prototype bundling's majority-vote
+  property survives the learned encoder: `emb-hdc` is invariant to 40% label
+  noise (drop −0.002) exactly like raw HDC, while a linear head on the *same*
+  embeddings drops −0.039 and a learned head on the binarized HD features drops
+  −0.154. At the head level, HDC is strictly the most label-noise-robust option.
+- **Input-noise / corruption robustness does NOT transfer.** Under Gaussian
+  noise and salt-and-pepper, `emb-hdc` degrades identically to `emb-linear` and
+  to the end-to-end MLP (e.g., a=1: 0.511 vs 0.509 / 0.511, against raw HDC's
+  0.642). Raw-feature HDC's noise resilience came from encoding *raw* inputs
+  into robust hypervectors, not from the HDC head itself; a smooth learned
+  encoder in front removes that protection. **You do start to rely on the
+  feature extractor** for noise robustness.
+- **Accuracy is now head-independent.** On frozen embeddings every head
+  converges to the same accuracy (0.64–0.65 at 1000/class), and the raw HDC
+  few-shot edge disappears: the backbone trained on tiny data is the bottleneck,
+  and HDCnn at 10/class (0.414) is *worse* than raw-feature HDC (0.477).
+- Clean accuracy also drops from 0.770 (raw) to 0.717 (HDCnn): on this
+  linear-in-the-signal task the 64-dim learned embedding discards signal the raw
+  128-dim features retain. HDCnn only pays off when the encoder genuinely adds
+  value for the task.
+
+---
+
 ## Overall conclusion
 
 | axis | winner | headline numbers |
@@ -262,6 +363,7 @@ representation and near-linear inspectability.
 | **Accuracy** | **HDC** (small data) / tie (large data) | +2.7 pp vs linear, +6.9 pp vs MLP at 10/class; 0.721 vs 0.722 at 1000/class |
 | **Robustness** | **HDC** | wins all four stress tests; label-noise drop −0.002 vs −9 to −20 pp; ±40% corruption barely dents it |
 | **Interpretability** | **linear** (raw attribution) / **HDC** (prototype artifact, near-linear) | linear ρ=0.57 & 2 KB; HDC ρ=0.44 but R²=0.99 + prototype explanation |
+| **HDCnn (§5)** | **HDC head for label noise**; **neither for input noise** | emb-hdc invariant to 40% label noise (drop −0.002) even on frozen learned embeddings; but under input noise emb-hdc ≈ MLP (0.511 vs 0.511 at a=1) — the encoder now carries the noise robustness |
 
 The dominant, repeatable pattern across these synthetic tests: **HDC is a
 powerful few-shot, one-pass, noise- and label-error-resilient learner whose
@@ -269,7 +371,11 @@ costs sit entirely in its wide random projection** (latency, memory) — while
 conventional classifier heads win on cheap dense inference and direct raw-feature
 attribution but need many gradient passes and more data to reach the same
 robustness. The prototype bundling (not the binarization) is the source of HDC's
-label-noise and corruption robustness.
+label-noise and corruption robustness. The HDCnn tests (§5) refine this: the
+prototype head keeps its label-noise immunity even on learned features, but the
+input-noise and few-shot advantages are properties of the *raw-feature encoding*
+and are forfeited the moment a learned encoder stands in front — in that setting
+the HDC head is only as robust as the network that feeds it.
 
 ## Caveats
 

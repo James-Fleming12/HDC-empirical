@@ -5,7 +5,13 @@ import json
 import os
 import time
 
-from benchmarks import b1_accuracy, b2_efficiency, b3_robustness, b4_interpretability
+from benchmarks import (
+    b1_accuracy,
+    b2_efficiency,
+    b3_robustness,
+    b4_interpretability,
+    b5_hdcnn,
+)
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -15,6 +21,7 @@ BENCHMARKS = {
     "b2_efficiency": b2_efficiency.run,
     "b3_robustness": b3_robustness.run,
     "b4_interpretability": b4_interpretability.run,
+    "b5_hdcnn": b5_hdcnn.run,
 }
 
 

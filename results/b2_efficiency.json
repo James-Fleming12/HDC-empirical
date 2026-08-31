@@ -4,46 +4,46 @@
   "D_hdc": 10000,
   "inference": {
     "hdc": {
-      "ms_per_10k": 310.528,
-      "pred_per_sec": 32203.2
+      "ms_per_10k": 316.599,
+      "pred_per_sec": 31585.7
     },
     "rf-linear": {
-      "ms_per_10k": 135.368,
-      "pred_per_sec": 73872.7
+      "ms_per_10k": 128.572,
+      "pred_per_sec": 77777.3
     },
     "rf-linear-bin": {
-      "ms_per_10k": 216.4,
-      "pred_per_sec": 46210.7
+      "ms_per_10k": 214.855,
+      "pred_per_sec": 46543.1
     },
     "linear": {
-      "ms_per_10k": 0.57,
-      "pred_per_sec": 17537091.0
+      "ms_per_10k": 0.606,
+      "pred_per_sec": 16493648.3
     },
     "mlp": {
-      "ms_per_10k": 0.949,
-      "pred_per_sec": 10538984.8
+      "ms_per_10k": 0.552,
+      "pred_per_sec": 18125201.7
     }
   },
   "update": {
     "hdc": {
-      "ms_per_batch(64)": 1.173,
-      "samples_per_sec": 54556.1
+      "ms_per_batch(64)": 0.9,
+      "samples_per_sec": 71149.7
     },
     "rf-linear": {
-      "ms_per_batch(64)": 89.806,
-      "samples_per_sec": 712.6
+      "ms_per_batch(64)": 84.116,
+      "samples_per_sec": 760.9
     },
     "rf-linear-bin": {
-      "ms_per_batch(64)": 89.926,
-      "samples_per_sec": 711.7
+      "ms_per_batch(64)": 84.723,
+      "samples_per_sec": 755.4
     },
     "linear-sgd": {
-      "ms_per_batch(64)": 1.149,
-      "samples_per_sec": 55713.4
+      "ms_per_batch(64)": 1.187,
+      "samples_per_sec": 53899.7
     },
     "mlp": {
-      "ms_per_batch(64)": 0.853,
-      "samples_per_sec": 74987.0
+      "ms_per_batch(64)": 0.422,
+      "samples_per_sec": 151669.7
     }
   },
   "online_curve": {
@@ -80,19 +80,19 @@
   },
   "cold_start": {
     "hdc": {
-      "fit_ms(50_samples)": 0.88,
+      "fit_ms(50_samples)": 0.84,
       "acc_after_cold_start": 0.3872
     },
     "rf-linear-bin": {
-      "fit_ms(50_samples)": 201.7,
+      "fit_ms(50_samples)": 190.02,
       "acc_after_cold_start": 0.3796
     },
     "linear": {
-      "fit_ms(50_samples)": 2.22,
+      "fit_ms(50_samples)": 2.29,
       "acc_after_cold_start": 0.3712
     },
     "mlp": {
-      "fit_ms(50_samples)": 54.71,
+      "fit_ms(50_samples)": 53.46,
       "acc_after_cold_start": 0.3505
     }
   },

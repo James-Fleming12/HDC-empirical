@@ -191,8 +191,8 @@ class RFLinear:
 class RFLinearBin(RFLinear):
     name = "rf-linear-bin"
 
-    def __init__(self, d: int, D: int = 10000, seed: int = 0):
-        super().__init__(d, D, seed, binarize=True)
+    def __init__(self, d: int, D: int = 10000, seed: int = 0, epochs: int = 60):
+        super().__init__(d, D, seed, binarize=True, epochs=epochs)
 
 
 # --------------------------------------------------------------------------- #
@@ -317,8 +317,55 @@ class MLPHead:
 
 
 # --------------------------------------------------------------------------- #
-# Reference models
+# Learned feature extractor (backbone) for the HDCnn setup.
+# Architecture matches MLPHead exactly (d-h-h-K), trained with cross-entropy.
+# After fit, `embed()` returns the penultimate 64-dim features; the final
+# classification layer is the head that HDCnn replaces.
 # --------------------------------------------------------------------------- #
+class NNEncoder:
+    name = "nn-encoder"
+    kind = "backbone"
+
+    def __init__(self, d: int, K: int, h: int = 64, seed: int = 0,
+                 epochs: int = 60, lr: float = 1e-2, batch: int = 64):
+        self.d, self.K, self.h = d, K, h
+        self.seed, self.epochs, self.lr, self.batch = seed, epochs, lr, batch
+        self.model: _MLP | None = None
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "NNEncoder":
+        torch.manual_seed(self.seed)
+        self.model = _MLP(self.d, self.h, self.K)
+        opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        lossf = nn.CrossEntropyLoss()
+        Xt = torch.tensor(X, dtype=torch.float32)
+        yt = torch.tensor(y, dtype=torch.long)
+        n = len(yt)
+        self.model.train()
+        for _ in range(self.epochs):
+            idx = torch.randperm(n)
+            for i in range(0, n, self.batch):
+                b = idx[i:i + self.batch]
+                opt.zero_grad()
+                loss = lossf(self.model(Xt[b]), yt[b])
+                loss.backward()
+                opt.step()
+        self.model.eval()
+        return self
+
+    def embed(self, X: np.ndarray) -> np.ndarray:
+        """Penultimate-layer features (input to the replaced classification head)."""
+        with torch.no_grad():
+            return self.model.net[:4](torch.tensor(X, dtype=torch.float32)).numpy()
+
+    def n_params(self) -> int:
+        if self.model is None:
+            return 0
+        return sum(p.numel() for p in self.model.parameters())
+
+    def storage_bytes(self) -> int:
+        if self.model is None:
+            return 0
+        return sum(p.numel() for p in self.model.parameters()) * 4
 class SVMHead:
     name = "svm"
     kind = "kernel"
