@@ -1,0 +1,171 @@
+{
+  "task": "latent_manifold_d=128_K=4",
+  "clean_test_acc": {
+    "hdc": 0.77,
+    "rf-linear": 0.711,
+    "rf-linear-bin": 0.698,
+    "linear": 0.725,
+    "mlp": 0.707,
+    "svm": 0.755,
+    "knn": 0.662
+  },
+  "gaussian_noise": {
+    "a=0.0": {
+      "hdc": 0.77,
+      "rf-linear": 0.711,
+      "rf-linear-bin": 0.698,
+      "linear": 0.725,
+      "mlp": 0.707,
+      "svm": 0.755,
+      "knn": 0.662
+    },
+    "a=1.0": {
+      "hdc": 0.642,
+      "rf-linear": 0.535,
+      "rf-linear-bin": 0.543,
+      "linear": 0.557,
+      "mlp": 0.511,
+      "svm": 0.263,
+      "knn": 0.542
+    },
+    "a=2.0": {
+      "hdc": 0.514,
+      "rf-linear": 0.417,
+      "rf-linear-bin": 0.438,
+      "linear": 0.449,
+      "mlp": 0.432,
+      "svm": 0.238,
+      "knn": 0.468
+    },
+    "a=4.0": {
+      "hdc": 0.387,
+      "rf-linear": 0.327,
+      "rf-linear-bin": 0.341,
+      "linear": 0.345,
+      "mlp": 0.346,
+      "svm": 0.238,
+      "knn": 0.351
+    },
+    "a=8.0": {
+      "hdc": 0.305,
+      "rf-linear": 0.287,
+      "rf-linear-bin": 0.302,
+      "linear": 0.288,
+      "mlp": 0.286,
+      "svm": 0.238,
+      "knn": 0.299
+    }
+  },
+  "salt_pepper": {
+    "frac=0.05": {
+      "hdc": 0.654,
+      "rf-linear": 0.553,
+      "rf-linear-bin": 0.57,
+      "linear": 0.598,
+      "mlp": 0.558,
+      "svm": 0.26,
+      "knn": 0.595
+    },
+    "frac=0.1": {
+      "hdc": 0.654,
+      "rf-linear": 0.534,
+      "rf-linear-bin": 0.558,
+      "linear": 0.569,
+      "mlp": 0.55,
+      "svm": 0.238,
+      "knn": 0.573
+    },
+    "frac=0.2": {
+      "hdc": 0.65,
+      "rf-linear": 0.561,
+      "rf-linear-bin": 0.558,
+      "linear": 0.596,
+      "mlp": 0.544,
+      "svm": 0.238,
+      "knn": 0.578
+    },
+    "frac=0.4": {
+      "hdc": 0.677,
+      "rf-linear": 0.577,
+      "rf-linear-bin": 0.592,
+      "linear": 0.619,
+      "mlp": 0.56,
+      "svm": 0.238,
+      "knn": 0.618
+    }
+  },
+  "domain_shift": {
+    "tau=0.0": {
+      "hdc": 0.77,
+      "rf-linear": 0.711,
+      "rf-linear-bin": 0.698,
+      "linear": 0.725,
+      "mlp": 0.707,
+      "svm": 0.755,
+      "knn": 0.662
+    },
+    "tau=1.0": {
+      "hdc": 0.765,
+      "rf-linear": 0.702,
+      "rf-linear-bin": 0.687,
+      "linear": 0.722,
+      "mlp": 0.709,
+      "svm": 0.761,
+      "knn": 0.664
+    },
+    "tau=2.0": {
+      "hdc": 0.767,
+      "rf-linear": 0.692,
+      "rf-linear-bin": 0.7,
+      "linear": 0.719,
+      "mlp": 0.702,
+      "svm": 0.77,
+      "knn": 0.666
+    },
+    "tau=4.0": {
+      "hdc": 0.76,
+      "rf-linear": 0.658,
+      "rf-linear-bin": 0.685,
+      "linear": 0.718,
+      "mlp": 0.688,
+      "svm": 0.705,
+      "knn": 0.668
+    }
+  },
+  "label_noise": {
+    "flip=0.0": {
+      "hdc": 0.77,
+      "rf-linear": 0.711,
+      "rf-linear-bin": 0.698,
+      "linear": 0.725,
+      "mlp": 0.707,
+      "svm": 0.755,
+      "knn": 0.662
+    },
+    "flip=0.2": {
+      "hdc": 0.771,
+      "rf-linear": 0.538,
+      "rf-linear-bin": 0.627,
+      "linear": 0.693,
+      "mlp": 0.595,
+      "svm": 0.745,
+      "knn": 0.621
+    },
+    "flip=0.4": {
+      "hdc": 0.768,
+      "rf-linear": 0.513,
+      "rf-linear-bin": 0.527,
+      "linear": 0.636,
+      "mlp": 0.522,
+      "svm": 0.737,
+      "knn": 0.559
+    }
+  },
+  "_env": {
+    "host": "omarchy",
+    "python": "3.14.6 (main, Jun 11 2026, 04:03:53) [Clang 22.1.3 ]",
+    "numpy": "2.5.1",
+    "sklearn": "1.9.0",
+    "torch": "2.13.0+cu130"
+  }
+}
