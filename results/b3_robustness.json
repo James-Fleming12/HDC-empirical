@@ -20,7 +20,7 @@
       "knn": 0.662
     },
     "a=1.0": {
-      "hdc": 0.642,
+      "hdc": 0.643,
       "rf-linear": 0.535,
       "rf-linear-bin": 0.543,
       "linear": 0.557,
@@ -29,7 +29,7 @@
       "knn": 0.542
     },
     "a=2.0": {
-      "hdc": 0.514,
+      "hdc": 0.515,
       "rf-linear": 0.417,
       "rf-linear-bin": 0.438,
       "linear": 0.449,
@@ -38,7 +38,7 @@
       "knn": 0.468
     },
     "a=4.0": {
-      "hdc": 0.387,
+      "hdc": 0.386,
       "rf-linear": 0.327,
       "rf-linear-bin": 0.341,
       "linear": 0.345,
@@ -47,7 +47,7 @@
       "knn": 0.351
     },
     "a=8.0": {
-      "hdc": 0.305,
+      "hdc": 0.306,
       "rf-linear": 0.287,
       "rf-linear-bin": 0.302,
       "linear": 0.288,
@@ -58,7 +58,7 @@
   },
   "salt_pepper": {
     "frac=0.05": {
-      "hdc": 0.654,
+      "hdc": 0.652,
       "rf-linear": 0.553,
       "rf-linear-bin": 0.57,
       "linear": 0.598,
@@ -67,7 +67,7 @@
       "knn": 0.595
     },
     "frac=0.1": {
-      "hdc": 0.654,
+      "hdc": 0.653,
       "rf-linear": 0.534,
       "rf-linear-bin": 0.558,
       "linear": 0.569,

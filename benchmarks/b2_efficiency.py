@@ -8,7 +8,10 @@ share the same class centers.
 """
 from __future__ import annotations
 
+import time
+
 import numpy as np
+import torch
 from sklearn.linear_model import SGDClassifier
 
 from hdc_empirical.data import gaussian_blobs
@@ -68,7 +71,75 @@ def _inference_throughput(X: np.ndarray) -> dict:
             "ms_per_10k": round(ms, 3),
             "pred_per_sec": round(10_000 / (ms / 1000.0), 1),
         }
+
+    hdc = models[0]
+    # breakdown: encode (random projection GEMM) vs classifier (prototype match)
+    out["hdc"]["encode_ms_10k"] = round(bench_time(lambda: hdc.encode(X), repeat=5), 3)
+    hv10 = hdc.encode(X)
+    out["hdc"]["classifier_ms_10k"] = round(
+        bench_time(lambda: hdc._hamming_from_hv(hv10), repeat=5), 3
+    )
+    # float-GEMM scoring pipeline (fastest numpy path; see README note)
+    ms_f = bench_time(lambda: hdc.scores(X).argmax(axis=1), repeat=5)
+    out["hdc-float-scoring"] = {
+        "ms_per_10k": round(ms_f, 3),
+        "pred_per_sec": round(10_000 / (ms_f / 1000.0), 1),
+    }
     return out
+
+
+def _gpu_inference_throughput(X: np.ndarray):
+    """Inference on GPU (torch + CUDA), if available.
+
+    HDC on the GPU uses the standard float-GEMM pipeline (torch has no
+    popcount; GPU HDC libraries score with a matmul on the binarized vectors).
+    """
+    if not torch.cuda.is_available():
+        return None
+    Xtr, ytr = _data()[0]
+    hdc = HDC(d=D, D=D_HDC, seed=0).fit(Xtr, ytr)
+    lin = LinearHead(d=D, seed=0).fit(Xtr, ytr)
+
+    Xg = torch.from_numpy(X).cuda()
+    Pg = torch.from_numpy(hdc.P).cuda()
+    proto_g = torch.from_numpy(hdc.prototypes.astype(np.float32)).cuda()
+    Wg = torch.from_numpy(lin.clf.coef_.T.astype(np.float32)).cuda()
+
+    def hdc_predict():
+        H = torch.sign(Xg @ Pg)
+        return (H @ proto_g.T).argmax(dim=1)
+
+    def lin_predict():
+        return (Xg @ Wg).argmax(dim=1)
+
+    def bench(fn, rep=20):
+        fn()
+        torch.cuda.synchronize()
+        ts = []
+        for _ in range(rep):
+            t0 = time.perf_counter()
+            fn()
+            torch.cuda.synchronize()
+            ts.append((time.perf_counter() - t0) * 1000.0)
+        return float(np.median(ts))
+
+    def encode_only():
+        return torch.sign(Xg @ Pg)
+
+    ms_h, ms_l = bench(hdc_predict), bench(lin_predict)
+    ms_enc = bench(encode_only)
+    return {
+        "hdc": {
+            "ms_per_10k": round(ms_h, 3),
+            "pred_per_sec": round(10_000 / (ms_h / 1000.0), 1),
+            "encode_ms_10k": round(ms_enc, 3),
+            "classifier_ms_10k": round(ms_h - ms_enc, 3),
+        },
+        "linear": {
+            "ms_per_10k": round(ms_l, 3),
+            "pred_per_sec": round(10_000 / (ms_l / 1000.0), 1),
+        },
+    }
 
 
 def _update_throughput() -> dict:
@@ -192,6 +263,7 @@ def run() -> dict:
     return {
         "input_dim": D, "n_classes": K, "D_hdc": D_HDC,
         "inference": _inference_throughput(Xtr[:N_INFER]),
+        "gpu_inference": _gpu_inference_throughput(Xtr[:N_INFER]),
         "update": _update_throughput(),
         "online_curve": _online_learning_curve(),
         "cold_start": _cold_start(),

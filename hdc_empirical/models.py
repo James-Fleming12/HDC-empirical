@@ -28,6 +28,16 @@ def random_projection(d: int, D: int, seed: int) -> np.ndarray:
     return rng.normal(0.0, 1.0 / np.sqrt(d), size=(d, D)).astype(np.float32)
 
 
+def _popcount(x: np.ndarray) -> np.ndarray:
+    """Population count per element of a packed (uint8/16/32/64) array."""
+    if hasattr(np, "bitwise_count"):
+        return np.bitwise_count(x)
+    table = np.zeros(256, dtype=np.int8)
+    for i in range(256):
+        table[i] = bin(i).count("1")
+    return table[x.astype(np.uint8)]
+
+
 # --------------------------------------------------------------------------- #
 # HDC: random projection + binarization + class-prototype bundling
 # --------------------------------------------------------------------------- #
@@ -40,6 +50,7 @@ class HDC:
         self.P = random_projection(d, D, seed)
         self._sum = None      # (K, D) int64 running accumulation
         self.prototypes = None  # (K, D) int8 in {-1, +1}
+        self.prototypes_packed = None  # (K, D/8) uint8, bit-packed for Hamming
         self.counts = None
         self.K = None
 
@@ -56,6 +67,13 @@ class HDC:
 
     def _binarize(self) -> None:
         self.prototypes = np.sign(self._sum).astype(np.int8)
+        if self.D % 8 == 0:
+            bits = ((self.prototypes + 1) // 2).astype(np.uint8)
+            self.prototypes_packed = np.packbits(
+                bits.reshape(self.K, -1, 8), axis=-1
+            ).reshape(self.K, -1)
+        else:
+            self.prototypes_packed = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "HDC":
         return self.partial_fit(X, y)
@@ -76,7 +94,28 @@ class HDC:
         H = self.encode(X).astype(np.float32)
         return H @ self.prototypes.astype(np.float32).T
 
+    @staticmethod
+    def _packed_bits(hv: np.ndarray) -> np.ndarray:
+        """Pack {-1,+1} hypervectors into 0/1 bits, 8 per byte."""
+        bits = ((hv + 1) // 2).astype(np.uint8)
+        return np.packbits(bits.reshape(len(hv), -1, 8), axis=-1).reshape(len(hv), -1)
+
+    def _hamming_from_hv(self, hv: np.ndarray) -> np.ndarray:
+        """Bit-parallel Hamming distance to each class prototype (classifier stage)."""
+        packed = self._packed_bits(hv)
+        dist = np.zeros((len(hv), self.K), dtype=np.int64)
+        for c in range(self.K):
+            dist[:, c] = _popcount(packed ^ self.prototypes_packed[c]).sum(axis=-1)
+        return dist
+
+    def hamming_distance(self, X: np.ndarray) -> np.ndarray:
+        """Full inference (encode + Hamming). XOR + popcount is the canonical,
+        hardware-friendly HDC classifier op."""
+        return self._hamming_from_hv(self.encode(X))
+
     def predict(self, X: np.ndarray) -> np.ndarray:
+        if self.prototypes_packed is not None:
+            return self.hamming_distance(X).argmin(axis=1)
         return self.scores(X).argmax(axis=1)
 
     def logits(self, X: np.ndarray) -> np.ndarray:
